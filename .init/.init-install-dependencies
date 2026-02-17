@@ -1,0 +1,4 @@
+{
+    "command": "source venv/bin/activate && pip install -r requirements.txt",
+    "working_directory": "/tmp/kavia/workspace/code-generation/alert-management-system-235288/alert_backend"
+}
