@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from logging.config import fileConfig
+from urllib.parse import urlparse
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
@@ -16,11 +17,29 @@ target_metadata = Base.metadata
 
 
 def _get_sqlalchemy_url() -> str:
+    """
+    Build a SQLAlchemy URL for Alembic migrations.
+
+    NOTE: In this environment POSTGRES_URL may be either a hostname (legacy) or a full URL
+    (e.g. "postgresql://localhost:5000/myapp"). We normalize to host/port/db to ensure
+    Alembic/SQLAlchemy can always parse the constructed DSN.
+    """
     settings = get_settings()
-    return (
-        f"postgresql+psycopg2://{settings.postgres_user}:{settings.postgres_password}"
-        f"@{settings.postgres_url}:{settings.postgres_port}/{settings.postgres_db}"
-    )
+    raw = (settings.postgres_url or "").strip()
+
+    host = settings.postgres_url
+    port = settings.postgres_port
+    db = settings.postgres_db
+
+    if "://" in raw:
+        parsed = urlparse(raw)
+        host = parsed.hostname or host
+        port = str(parsed.port) if parsed.port is not None else port
+        parsed_db = (parsed.path or "").lstrip("/")
+        if parsed_db:
+            db = parsed_db
+
+    return f"postgresql+psycopg2://{settings.postgres_user}:{settings.postgres_password}@{host}:{port}/{db}"
 
 
 def run_migrations_offline() -> None:
